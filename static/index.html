@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Go Web Terminal</title>
+  <link rel="stylesheet" href="https://unpkg.com/xterm/css/xterm.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <div id="tabs-container">
+    <div id="tabs-header">
+      <button id="new-tab">+ New Tab</button>
+      <div id="tabs-list"></div>
+    </div>
+    <div id="terminals-container"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/xterm/lib/xterm.js"></script>
+<script src="https://unpkg.com/xterm-addon-fit/lib/xterm-addon-fit.js"></script>
+<script src="https://unpkg.com/xterm-addon-web-links/lib/xterm-addon-web-links.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
