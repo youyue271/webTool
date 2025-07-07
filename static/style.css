@@ -1,70 +1,121 @@
+/* 基础样式 */
 body {
     margin: 0;
-    background: #1e1e1e;
-    color: #f0f0f0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding: 0;
+    font-family: Arial, sans-serif;
     height: 100vh;
     overflow: hidden;
+    background-color: #252526;
+    color: #e0e0e0;
 }
 
-#app {
-    height: 100vh;
+.layout {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+/* 侧边栏样式 */
+.sidebar {
+    width: 250px;
+    background-color: #2d2d30;
+    padding: 15px;
+    border-right: 1px solid #3c3c3c;
     display: flex;
     flex-direction: column;
 }
 
-#tabs-container {
+.sidebar h2 {
+    margin-top: 0;
+    color: #e0e0e0;
+    font-size: 1.2em;
+}
+
+.sidebar-controls {
+    margin-bottom: 15px;
+}
+
+.encoding-selector {
+    margin-top: 10px;
+}
+
+.encoding-selector select {
+    background-color: #3c3c3c;
+    color: #e0e0e0;
+    border: 1px solid #007acc;
+    padding: 5px;
+    width: 100%;
+}
+
+#terminal-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    overflow-y: auto;
+    flex: 1;
+}
+
+#terminal-list li {
+    padding: 8px 12px;
+    margin: 5px 0;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+#terminal-list li:hover {
+    background-color: #3c3c3c;
+}
+
+#terminal-list li.active {
+    background-color: #007acc;
+}
+
+/* 主内容区样式 */
+.main-content {
+    flex: 1;
     display: flex;
     flex-direction: column;
     height: 100%;
 }
 
-#tabs-header {
-    display: flex;
-    background: #252526;
-    padding: 5px 10px;
+.tabs-container {
+    background-color: #252526;
     border-bottom: 1px solid #3c3c3c;
 }
 
-#new-tab {
-    background: #007acc;
-    color: white;
-    border: none;
-    padding: 5px 10px;
-    margin-right: 10px;
-    border-radius: 3px;
-    cursor: pointer;
-}
-
-#tabs-list {
+.tabs {
     display: flex;
-    flex-grow: 1;
+    padding-left: 10px;
 }
 
 .tab-item {
-    padding: 5px 15px;
-    background: #2d2d2d;
-    border: 1px solid #3c3c3c;
-    border-bottom: none;
-    margin-right: 5px;
-    border-radius: 3px 3px 0 0;
+    padding: 8px 15px;
     cursor: pointer;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    margin-right: 2px;
+    background-color: #2d2d2d;
 }
 
 .tab-item.active {
-    background: #1e1e1e;
-    border-bottom: 2px solid #007acc;
+    background-color: #1e1e1e;
+    border-bottom: 1px solid #1e1e1e;
 }
 
-#terminals-container {
-    flex-grow: 1;
+.terminals-container {
+    flex: 1;
     position: relative;
+    background-color: #1e1e1e;
+    overflow: hidden;
 }
 
 .terminal-container {
     position: absolute;
-    width: 100%;
-    height: 100%;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 10px;
     display: none;
 }
 
@@ -72,7 +123,23 @@ body {
     display: block;
 }
 
+/* 按钮样式 */
+button {
+    background-color: #007acc;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+button:hover {
+    background-color: #006bb3;
+}
+
+/* 终端容器 */
 .xterm {
+    height: 100%;
     padding: 10px;
-    height: calc(100% - 20px);
 }

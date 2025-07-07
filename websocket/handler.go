@@ -1,8 +1,6 @@
 package websocket
 
 import (
-	"bytes"
-	"encoding/hex"
 	"log"
 	"net/http"
 	"sync"
@@ -110,9 +108,9 @@ func (s *TerminalSession) handleOutput() {
 				return
 			}
 
-			log.Println("WebSocket output:", hex.Dump(output))
-			output = bytes.Replace(output, []byte("\r\n"), []byte("\r"), -1)
-			log.Println("WebSocket output:", hex.Dump(output))
+			//log.Println("WebSocket output:", hex.Dump(output))
+			//output = bytes.Replace(output, []byte("\r\n"), []byte("\r"), -1)
+			//log.Println("WebSocket output:", hex.Dump(output))
 			if err := s.conn.WriteMessage(websocket.TextMessage, output); err != nil {
 				log.Println("WebSocket write error:", err)
 				return

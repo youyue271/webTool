@@ -5,25 +5,31 @@ class TerminalManager {
         this.tabsContainer = document.getElementById('tabs-list');
         this.terminalsContainer = document.getElementById('terminals-container');
         this.newTabButton = document.getElementById('new-tab');
+        this.terminalList = document.getElementById('terminal-list');
 
         this.newTabButton.addEventListener('click', () => this.createTerminal());
         this.createTerminal(); // 初始创建第一个终端
+
+        window.addEventListener('resize', () => {
+            this.resizeActiveTerminal();
+        });
     }
 
     createTerminal() {
         const id = `term-${Date.now()}`;
+        const title = `PowerShell ${this.terminals.length + 1}`;
 
         // 创建标签页
         const tab = document.createElement('div');
         tab.className = 'tab-item';
-        tab.textContent = `PowerShell ${this.terminals.length + 1}`;
+        tab.textContent = title;
         tab.dataset.id = id;
 
         tab.addEventListener('click', () => this.switchTerminal(id));
 
         // 创建关闭按钮
         const closeBtn = document.createElement('span');
-        closeBtn.textContent = ' ×';
+        closeBtn.textContent = ' x';
         closeBtn.style.marginLeft = '10px';
         closeBtn.style.cursor = 'pointer';
         closeBtn.addEventListener('click', (e) => {
@@ -52,7 +58,6 @@ class TerminalManager {
 
         const fitAddon = new FitAddon.FitAddon();
         term.loadAddon(fitAddon);
-        term.loadAddon(new WebLinksAddon.WebLinksAddon());
         term.open(termContainer);
         fitAddon.fit();
 
@@ -61,14 +66,14 @@ class TerminalManager {
 
         term.onData(data => {
             // 特殊键处理
-            if (data === '\r') {
-                data = '\r\n';
+            if (data === '\r' || data === '\n') {
+                ws.send('\n');
             } else if (data === '\x7f') { // Backspace
-                data = '\b \b';
+                ws.send('\b');
+            } else {
+                ws.send(data);
+                term.write(data);
             }
-            ws.send(data);
-            console.log(data)
-            term.write(data)
         });
 
         ws.onmessage = event => {
@@ -92,8 +97,16 @@ class TerminalManager {
         //     ws.send('\r');
         // }, 500);
 
-        this.terminals.push({ id, term, ws, tab, container: termContainer });
+        const listItem = document.createElement('li');
+        listItem.textContent = title;
+        listItem.dataset.id = id;
+        listItem.addEventListener('click', () => this.switchTerminal(id));
+        this.terminalList.appendChild(listItem);
+
+        this.terminals.push({ id, term, ws, tab, container: termContainer, listItem, fitAddon });
         this.switchTerminal(id);
+
+        return id;
     }
 
     switchTerminal(id) {
@@ -101,8 +114,11 @@ class TerminalManager {
             const isActive = t.id === id;
             t.container.classList.toggle('active', isActive);
             t.tab.classList.toggle('active', isActive);
+            t.listItem.classList.toggle('active', isActive);
         });
         this.activeTerminalId = id;
+
+        this.resizeActiveTerminal()
     }
 
     closeTerminal(id) {
@@ -114,16 +130,33 @@ class TerminalManager {
         terminal.term.dispose();
         terminal.tab.remove();
         terminal.container.remove();
+        terminal.listItem.remove();
 
         if (terminal.id === this.activeTerminalId && this.terminals.length > 0) {
             this.switchTerminal(this.terminals[0].id);
+        }
+    }
+
+    resizeActiveTerminal() {
+        if (!this.activeTerminalId) return;
+
+        const terminal = this.terminals.find(t => t.id === this.activeTerminalId);
+        if (terminal && terminal.fitAddon) {
+            // 延迟执行以确保DOM更新完成
+            setTimeout(() => {
+                try {
+                    terminal.fitAddon.fit();
+                } catch (e) {
+                    console.log("Resize error:", e);
+                }
+            }, 50);
         }
     }
 }
 
 // 页面加载完成后初始化
 window.addEventListener('load', () => {
-    new TerminalManager();
+    window.terminalManager = new TerminalManager();
 
     // 确保终端在窗口大小变化时自适应
     const resizeObserver = new ResizeObserver(() => {
