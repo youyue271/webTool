@@ -7,13 +7,35 @@ class TerminalManager {
         this.newTabButton = document.getElementById('new-tab');
         this.terminalList = document.getElementById('terminal-list');
 
+        this.tabsWrapper = document.querySelector('.tabs-wrapper');
+        this.scrollIndicator = document.querySelector('.tabs-overflow-indicator');
+        this.scrollLeftBtn = this.createScrollButton('left');
+        this.scrollRightBtn = this.createScrollButton('right');
+
+        this.tabsWrapper.addEventListener('scroll', () => this.updateScrollIndicator());
+        this.scrollLeftBtn.addEventListener('click', () => this.scrollTabs(-150));
+        this.scrollRightBtn.addEventListener('click', () => this.scrollTabs(150));
+
         this.newTabButton.addEventListener('click', () => this.createTerminal());
         this.createTerminal(); // 初始创建第一个终端
+
+        this.tabsWrapper.addEventListener('wheel', (e) => {
+            if (e.deltaY !== 0) {
+                // 防止垂直滚动时页面滚动
+                e.preventDefault();
+
+                // 将垂直滚动转换为水平滚动
+                this.tabsWrapper.scrollLeft += e.deltaY * 2;
+                this.updateScrollIndicator();
+            }
+        }, { passive: false });
+
 
         window.addEventListener('resize', () => {
             this.resizeActiveTerminal();
         });
     }
+
 
     createTerminal() {
         const id = `term-${Date.now()}`;
@@ -39,6 +61,7 @@ class TerminalManager {
         tab.appendChild(closeBtn);
 
         this.tabsContainer.appendChild(tab);
+        setTimeout(() => this.checkTabOverflow(), 100);
 
         // 创建终端容器
         const termContainer = document.createElement('div');
@@ -103,7 +126,7 @@ class TerminalManager {
         listItem.addEventListener('click', () => this.switchTerminal(id));
         this.terminalList.appendChild(listItem);
 
-        this.terminals.push({ id, term, ws, tab, container: termContainer, listItem, fitAddon });
+        this.terminals.push({id, term, ws, tab, container: termContainer, listItem, fitAddon});
         this.switchTerminal(id);
 
         return id;
@@ -117,6 +140,8 @@ class TerminalManager {
             t.listItem.classList.toggle('active', isActive);
         });
         this.activeTerminalId = id;
+
+        setTimeout(() => this.scrollToActiveTab(), 50);
 
         this.resizeActiveTerminal()
     }
@@ -132,10 +157,13 @@ class TerminalManager {
         terminal.container.remove();
         terminal.listItem.remove();
 
+        setTimeout(() => this.checkTabOverflow(), 100);
+
         if (terminal.id === this.activeTerminalId && this.terminals.length > 0) {
             this.switchTerminal(this.terminals[0].id);
         }
     }
+
 
     resizeActiveTerminal() {
         if (!this.activeTerminalId) return;
@@ -151,6 +179,72 @@ class TerminalManager {
                 }
             }, 50);
         }
+    }
+
+    createScrollButton(direction) {
+        const button = document.createElement('div');
+        button.className = `scroll-button ${direction}`;
+        button.innerHTML = direction === 'left' ? '&lt;' : '&gt;';
+        document.querySelector('.tabs-container').appendChild(button);
+        return button;
+    }
+
+    // 检查标签是否溢出
+    checkTabOverflow() {
+        const hasOverflow = this.tabsWrapper.scrollWidth > this.tabsWrapper.clientWidth;
+        this.scrollIndicator.style.display = hasOverflow ? 'flex' : 'none';
+        this.updateScrollIndicator();
+    }
+
+    // 更新滚动指示器状态
+    updateScrollIndicator() {
+        const scrollLeft = this.tabsWrapper.scrollLeft;
+        const scrollWidth = this.tabsWrapper.scrollWidth;
+        const clientWidth = this.tabsWrapper.clientWidth;
+
+        // 显示/隐藏指示器
+        const showIndicator = scrollWidth > clientWidth;
+        this.scrollIndicator.style.display = showIndicator ? 'flex' : 'none';
+
+        if (!showIndicator) return;
+
+        // 更新滚动指示器位置
+        const scrollRatio = scrollLeft / (scrollWidth - clientWidth);
+        const gradientPercent = Math.max(0, Math.min(100, Math.round(scrollRatio * 100)));
+
+        // 动态调整指示器渐变方向
+        const gradientStart = Math.max(0, 100 - gradientPercent - 30);
+        this.scrollIndicator.style.background =
+            `linear-gradient(to right, transparent ${gradientStart}%, #252526 ${gradientStart + 30}%)`;
+    }
+
+    // 滚动标签
+    scrollTabs(distance) {
+        const newPosition = this.tabsWrapper.scrollLeft + distance;
+        const maxScroll = this.tabsWrapper.scrollWidth - this.tabsWrapper.clientWidth;
+
+        // 限制在有效范围内
+        this.tabsWrapper.scrollLeft = Math.max(0, Math.min(maxScroll, newPosition));
+        this.updateScrollIndicator();
+    }
+
+    scrollToActiveTab() {
+        const activeTab = this.tabsContainer.querySelector('.tab-item.active');
+        if (!activeTab) return;
+
+        const wrapperRect = this.tabsWrapper.getBoundingClientRect();
+        const tabRect = activeTab.getBoundingClientRect();
+
+        // 检查标签是否在视图外
+        if (tabRect.left < wrapperRect.left) {
+            // 标签在左边界外
+            this.tabsWrapper.scrollLeft += tabRect.left - wrapperRect.left;
+        } else if (tabRect.right > wrapperRect.right) {
+            // 标签在右边界外
+            this.tabsWrapper.scrollLeft += tabRect.right - wrapperRect.right;
+        }
+
+        this.updateScrollIndicator();
     }
 }
 

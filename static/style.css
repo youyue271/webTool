@@ -17,7 +17,7 @@ body {
 
 /* 侧边栏样式 */
 .sidebar {
-    width: 250px;
+    width: 500px;
     background-color: #2d2d30;
     padding: 15px;
     border-right: 1px solid #3c3c3c;
@@ -78,14 +78,39 @@ body {
     height: 100%;
 }
 
+/* 标签容器 */
 .tabs-container {
+    position: relative;
     background-color: #252526;
     border-bottom: 1px solid #3c3c3c;
+    height: 45px; /* 固定高度 */
+    overflow: hidden; /* 隐藏溢出的内容 */
 }
 
+.tabs-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow-x: auto; /* 允许水平滚动 */
+    overflow-y: hidden; /* 隐藏垂直滚动条 */
+    white-space: nowrap; /* 防止标签换行 */
+    scrollbar-width: none; /* 隐藏Firefox滚动条 */
+    -ms-overflow-style: none; /* 隐藏IE/Edge滚动条 */
+}
+
+/* 隐藏Chrome/Safari滚动条 */
+.tabs-wrapper::-webkit-scrollbar {
+    display: none;
+}
+
+
 .tabs {
-    display: flex;
+    display: inline-flex; /* 内联弹性布局，标签不换行 */
+    min-width: 100%; /* 确保容器可以扩展 */
     padding-left: 10px;
+    height: 100%;
 }
 
 .tab-item {
@@ -95,12 +120,64 @@ body {
     border-top-right-radius: 4px;
     margin-right: 2px;
     background-color: #2d2d2d;
+    position: relative;
+    height: 100%;
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0; /* 防止标签缩小 */
+    max-width: 200px; /* 标签最大宽度 */
+    overflow: hidden; /* 超出文本隐藏 */
+    text-overflow: ellipsis; /* 文本溢出显示省略号 */
+}
+
+/* 标签溢出指示器 */
+.tabs-overflow-indicator {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    width: 30px;
+    background: linear-gradient(to right, transparent, #252526 70%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    font-size: 20px;
+    pointer-events: none; /* 防止阻止点击标签 */
 }
 
 .tab-item.active {
     background-color: #1e1e1e;
     border-bottom: 1px solid #1e1e1e;
 }
+
+/* 滚动按钮 - 可选功能 */
+.scroll-button {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 30px;
+    background-color: rgba(45, 45, 45, 0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.scroll-button.left {
+    left: 0;
+}
+
+.scroll-button.right {
+    right: 0;
+}
+
+.tabs-container:hover .scroll-button {
+    display: flex;
+}
+
+
 
 .terminals-container {
     flex: 1;
