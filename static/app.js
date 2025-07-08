@@ -1,24 +1,32 @@
 class TerminalManager {
     constructor() {
+        // 定义各种部件
+
+        // 执行终端逻辑部件
         this.terminals = [];
         this.activeTerminalId = null;
+
+        // 右侧执行终端tab列表
         this.tabsContainer = document.getElementById('tabs-list');
         this.terminalsContainer = document.getElementById('terminals-container');
         this.newTabButton = document.getElementById('new-tab');
+
+        // sidebar执行终端列表显示
         this.terminalList = document.getElementById('terminal-list');
 
+        // sidebar左下管理终端
+        // this.toolManager = new TerminalManager();
+        this.initAdminTerminal();
+
+        // 右侧tab滚动显示组件
         this.tabsWrapper = document.querySelector('.tabs-wrapper');
-        this.scrollIndicator = document.querySelector('.tabs-overflow-indicator');
         this.scrollLeftBtn = this.createScrollButton('left');
         this.scrollRightBtn = this.createScrollButton('right');
 
+        // 右侧tab滚动显示组件事件
         this.tabsWrapper.addEventListener('scroll', () => this.updateScrollIndicator());
         this.scrollLeftBtn.addEventListener('click', () => this.scrollTabs(-150));
         this.scrollRightBtn.addEventListener('click', () => this.scrollTabs(150));
-
-        this.newTabButton.addEventListener('click', () => this.createTerminal());
-        this.createTerminal(); // 初始创建第一个终端
-
         this.tabsWrapper.addEventListener('wheel', (e) => {
             if (e.deltaY !== 0) {
                 // 防止垂直滚动时页面滚动
@@ -28,15 +36,101 @@ class TerminalManager {
                 this.tabsWrapper.scrollLeft += e.deltaY * 2;
                 this.updateScrollIndicator();
             }
-        }, { passive: false });
+        }, {passive: false});
 
+        // 右侧tab栏新建Tab事件
+        this.newTabButton.addEventListener('click', () => this.createTerminal());
+        this.createTerminal(); // 初始创建第一个终端
 
+        // 窗口大小动态调整
         window.addEventListener('resize', () => {
             this.resizeActiveTerminal();
+            this.resizeAdminTerminal();
         });
     }
 
+    // 右上标签页Tab栏
 
+    /**
+     * 创建Tab栏滚动按钮
+     * @param direction
+     * @returns {HTMLDivElement}
+     */
+    createScrollButton(direction) {
+        const button = document.createElement('div');
+        button.className = `scroll-button ${direction}`;
+        button.innerHTML = direction === 'left' ? '&lt;' : '&gt;';
+        document.querySelector('.tabs-container').appendChild(button);
+        return button;
+    }
+
+    /**
+     * 检查Tab标签页是否溢出，配合滚动栏使用
+     */
+    checkTabOverflow() {
+        this.updateScrollIndicator();
+    }
+
+    /**
+     * 更新滚动指示器状态
+     */
+    updateScrollIndicator() {
+        const scrollLeft = this.tabsWrapper.scrollLeft;
+        const scrollWidth = this.tabsWrapper.scrollWidth;
+        const clientWidth = this.tabsWrapper.clientWidth;
+
+        // 更新滚动指示器位置
+        const scrollRatio = scrollLeft / (scrollWidth - clientWidth);
+        const gradientPercent = Math.max(0, Math.min(100, Math.round(scrollRatio * 100)));
+
+        // 动态调整指示器渐变方向
+        const gradientStart = Math.max(0, 100 - gradientPercent - 30);
+        this.scrollIndicator.style.background =
+            `linear-gradient(to right, transparent ${gradientStart}%, #252526 ${gradientStart + 30}%)`;
+    }
+
+
+    /**
+     * 滚动标签页
+     * @param distance
+     */
+    scrollTabs(distance) {
+        const newPosition = this.tabsWrapper.scrollLeft + distance;
+        const maxScroll = this.tabsWrapper.scrollWidth - this.tabsWrapper.clientWidth;
+
+        // 限制在有效范围内
+        this.tabsWrapper.scrollLeft = Math.max(0, Math.min(maxScroll, newPosition));
+        this.updateScrollIndicator();
+    }
+
+    /**
+     * 如果直接切换的话，滚动标签页，确保ActiveTab在滚动栏中显示
+     */
+    scrollToActiveTab() {
+        const activeTab = this.tabsContainer.querySelector('.tab-item.active');
+        if (!activeTab) return;
+
+        const wrapperRect = this.tabsWrapper.getBoundingClientRect();
+        const tabRect = activeTab.getBoundingClientRect();
+
+        // 检查标签是否在视图外
+        if (tabRect.left < wrapperRect.left) {
+            // 标签在左边界外
+            this.tabsWrapper.scrollLeft += tabRect.left - wrapperRect.left;
+        } else if (tabRect.right > wrapperRect.right) {
+            // 标签在右边界外
+            this.tabsWrapper.scrollLeft += tabRect.right - wrapperRect.right;
+        }
+
+        this.updateScrollIndicator();
+    }
+
+    // 执行终端相关
+
+    /**
+     * 创建新的执行终端， 并与后端go绑定事件
+     * @returns {string} 终端ID
+     */
     createTerminal() {
         const id = `term-${Date.now()}`;
         const title = `PowerShell ${this.terminals.length + 1}`;
@@ -99,7 +193,6 @@ class TerminalManager {
                 term.prompt()
             } else if (data === '\x7f') { // Backspace
                 ws.send('\x7f');
-                term.
                 term.write('\b \b')
             } else {
                 ws.send(data);
@@ -116,14 +209,14 @@ class TerminalManager {
             term.prompt()
         };
 
-        ws.onclose = () => {
-            const exitMsg = '\r\n\x1b[31mConnection closed - Exit code: ' +
-                (terminalExitCode !== null ? terminalExitCode : 'N/A') +
-                '\x1b[0m\r\n';
-            term.write(exitMsg);
-            // 禁用输入
-            term.off('data');
-        };
+        // ws.onclose = () => {
+        //     const exitMsg = '\r\n\x1b[31mConnection closed - Exit code: ' +
+        //         (terminalExitCode !== null ? terminalExitCode : 'N/A') +
+        //         '\x1b[0m\r\n';
+        //     term.write(exitMsg);
+        //     // 禁用输入
+        //     term.off('data');
+        // };
 
         // // 初始化后发送回车触发提示符
         // setTimeout(() => {
@@ -136,12 +229,23 @@ class TerminalManager {
         listItem.addEventListener('click', () => this.switchTerminal(id));
         this.terminalList.appendChild(listItem);
 
-        this.terminals.push({id, term, ws, tab, container: termContainer, listItem, fitAddon});
+        this.terminals.push({
+            id,
+            term,
+            ws,
+            tab,
+            container: termContainer,
+            listItem, fitAddon
+        });
         this.switchTerminal(id);
 
         return id;
     }
 
+    /**
+     * 执行终端Tab页切换
+     * @param id 终端ID
+     */
     switchTerminal(id) {
         this.terminals.forEach(t => {
             const isActive = t.id === id;
@@ -156,6 +260,10 @@ class TerminalManager {
         this.resizeActiveTerminal()
     }
 
+    /**
+     * 关闭执行终端
+     * @param id 终端ID
+     */
     closeTerminal(id) {
         const index = this.terminals.findIndex(t => t.id === id);
         if (index === -1) return;
@@ -174,8 +282,11 @@ class TerminalManager {
         }
     }
 
-
+    /**
+     * resize执行终端
+     */
     resizeActiveTerminal() {
+
         if (!this.activeTerminalId) return;
 
         const terminal = this.terminals.find(t => t.id === this.activeTerminalId);
@@ -191,72 +302,168 @@ class TerminalManager {
         }
     }
 
-    createScrollButton(direction) {
-        const button = document.createElement('div');
-        button.className = `scroll-button ${direction}`;
-        button.innerHTML = direction === 'left' ? '&lt;' : '&gt;';
-        document.querySelector('.tabs-container').appendChild(button);
-        return button;
-    }
 
-    // 检查标签是否溢出
-    checkTabOverflow() {
-        const hasOverflow = this.tabsWrapper.scrollWidth > this.tabsWrapper.clientWidth;
-        this.scrollIndicator.style.display = hasOverflow ? 'flex' : 'none';
-        this.updateScrollIndicator();
-    }
+    // 管理终端有关
+    /**
+     * 初始化管理终端
+     */
+    initAdminTerminal() {
+        const container = document.getElementById('admin-terminal');
 
-    // 更新滚动指示器状态
-    updateScrollIndicator() {
-        const scrollLeft = this.tabsWrapper.scrollLeft;
-        const scrollWidth = this.tabsWrapper.scrollWidth;
-        const clientWidth = this.tabsWrapper.clientWidth;
+        const adminTerm = new Terminal({
+            cursorBlink: true,
+            theme: {
+                background: '#1e1e1e',
+                foreground: '#d4d4d4'
+            },
+            // rows: 8,
+            // cols: 40,
+            windowsMode: true
+        });
 
-        // 显示/隐藏指示器
-        const showIndicator = scrollWidth > clientWidth;
-        this.scrollIndicator.style.display = showIndicator ? 'flex' : 'none';
 
-        if (!showIndicator) return;
+        const fitAddon = new FitAddon.FitAddon();
+        adminTerm.loadAddon(fitAddon);
+        adminTerm.open(container);
+        fitAddon.fit();
 
-        // 更新滚动指示器位置
-        const scrollRatio = scrollLeft / (scrollWidth - clientWidth);
-        const gradientPercent = Math.max(0, Math.min(100, Math.round(scrollRatio * 100)));
+        const adminWs = new WebSocket(`ws://${window.location.host}/ws-admin`);
+        adminTerm.write("hello world!")
+        adminTerm.onData(data => {
+            // 输出发送后端
+            if (data === '\r' || data === '\n') {
+                adminTerm.write('\n\r')
+            } else if (data === '\x7f') { // Backspace
+                adminTerm.write('\b \b')
+            } else {
+                adminTerm.write(data);
+            }
+            if (adminWs.readyState === WebSocket.OPEN) {
+                adminWs.send(data);
+            }
+        })
 
-        // 动态调整指示器渐变方向
-        const gradientStart = Math.max(0, 100 - gradientPercent - 30);
-        this.scrollIndicator.style.background =
-            `linear-gradient(to right, transparent ${gradientStart}%, #252526 ${gradientStart + 30}%)`;
-    }
-
-    // 滚动标签
-    scrollTabs(distance) {
-        const newPosition = this.tabsWrapper.scrollLeft + distance;
-        const maxScroll = this.tabsWrapper.scrollWidth - this.tabsWrapper.clientWidth;
-
-        // 限制在有效范围内
-        this.tabsWrapper.scrollLeft = Math.max(0, Math.min(maxScroll, newPosition));
-        this.updateScrollIndicator();
-    }
-
-    scrollToActiveTab() {
-        const activeTab = this.tabsContainer.querySelector('.tab-item.active');
-        if (!activeTab) return;
-
-        const wrapperRect = this.tabsWrapper.getBoundingClientRect();
-        const tabRect = activeTab.getBoundingClientRect();
-
-        // 检查标签是否在视图外
-        if (tabRect.left < wrapperRect.left) {
-            // 标签在左边界外
-            this.tabsWrapper.scrollLeft += tabRect.left - wrapperRect.left;
-        } else if (tabRect.right > wrapperRect.right) {
-            // 标签在右边界外
-            this.tabsWrapper.scrollLeft += tabRect.right - wrapperRect.right;
+        adminWs.onmessage = event => {
+            // 显示控制台输出
+            adminTerm.write(event.data);
         }
 
-        this.updateScrollIndicator();
+        adminWs.onmessage = event => {
+            // 后端创建工具逻辑 TODO：需要定制一下， 这个就是粗略的模式
+            const message = event.data;
+            if (message.startsWith('CREATE_TOOL:')) {
+                const toolInfo = message.split(':')[1];
+                const [toolName, command] = toolInfo.split('|');
+                this.createToolTerminal(toolName, command);
+            } else {
+                adminTerm.write(message);
+            }
+        };
+
+        adminTerm.write("terminal ready")
+        this.adminTerm = {
+            adminTerm,
+            adminWs,
+            fitAddon
+        }
+    }
+
+    resizeAdminTerminal() {
+        if (this.adminTerm && this.adminTerm.fitAddon) {
+            setTimeout(() => {
+                try {
+                    this.adminTerm.fitAddon.fit();
+                } catch (e) {
+                    console.log("Resize error:", e);
+                }
+            }, 50);
+        }
+
+    }
+
+    /**
+     * 通过控制台创建执行终端tab
+     * @param toolName 工具名称, 命名为Tab名
+     * @param command 指令(工具地址,通过后端获得)
+     */
+    createToolTerminal(toolName, command) {
+        const id = `tool-term-${Date.now()}`;
+
+        // 创建标签页
+        const tab = document.createElement('div');
+        tab.className = 'tab-item';
+        tab.textContent = toolName;
+        tab.dataset.id = id;
+
+        tab.addEventListener('click', () => this.switchTerminal(id));
+
+        // 创建关闭按钮
+        const closeBtn = document.createElement('span');
+        closeBtn.textContent = ' x';
+        closeBtn.style.marginLeft = '10px';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.closeTerminal(id);
+        });
+        tab.appendChild(closeBtn);
+
+        this.tabsContainer.appendChild(tab);
+        setTimeout(() => this.checkTabOverflow(), 100);
+
+        // 创建终端容器
+        const termContainer = document.createElement('div');
+        termContainer.id = id;
+        termContainer.className = 'terminal-container';
+        this.terminalsContainer.appendChild(termContainer);
+
+        // 初始化xterm
+        const term = new Terminal({
+            cursorBlink: true,
+            theme: {
+                background: '#1e1e1e',
+                foreground: '#d4d4d4'
+            },
+            windowsMode: true
+        });
+
+        const fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+        term.open(termContainer);
+        fitAddon.fit();
+
+        const ws = new WebSocket(`ws://${window.location.host}/ws-tool?terminalId=${id}&command=${encodeURIComponent(command)}`);
+
+        term.onData(data => {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(data);
+            }
+        });
+
+        ws.onmessage = event => {
+            term.write(event.data);
+        };
+
+        ws.onclose = () => {
+            term.write('\r\n\x1b[31m连接关闭\x1b[0m\r\n');
+        };
+
+        // 添加到终端列表
+        this.terminals.push({
+            id,
+            term,
+            ws,
+            tab,
+            container: termContainer,
+            fitAddon,
+            toolName
+        });
+
+        // 切换到新创建的终端
+        this.switchTerminal(id);
     }
 }
+
 
 // 页面加载完成后初始化
 window.addEventListener('load', () => {

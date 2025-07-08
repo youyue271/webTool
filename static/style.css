@@ -9,15 +9,19 @@ body {
     color: #e0e0e0;
 }
 
+/* 固定比例布局 */
 .layout {
     display: flex;
     width: 100%;
     height: 100%;
+    min-height: 100vh;
 }
+
 
 /* 侧边栏样式 */
 .sidebar {
-    width: 30%;
+    width: 40%;
+    height: 100%;
     background-color: #2d2d30;
     padding: 15px;
     border-right: 1px solid #3c3c3c;
@@ -47,6 +51,10 @@ body {
     width: 100%;
 }
 
+
+
+
+
 #terminal-list {
     list-style: none;
     padding: 0;
@@ -70,8 +78,60 @@ body {
     background-color: #007acc;
 }
 
+/* 管理控制台样式 */
+.admin-terminal-container {
+    padding: 15px 0;
+    border-top: 1px solid #3c3c3c;
+    margin-top: 15px;
+    margin-right: 10px;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    height: 50%; /* 保持高度不变 */
+    position: relative; /* 添加相对定位 */
+    margin-bottom: 1px; /* 增加底部间距 */
+}
+
+.admin-terminal {
+    width: 100%;
+    height: 100%;
+    background-color: #1e1e1e;
+    border: 1px solid #007acc;
+    border-radius: 3px;
+    padding: 5px;
+    overflow: hidden; /* 隐藏溢出内容 */
+}
+
+/* 移除Xterm.js的滚动条 */
+.xterm-viewport {
+    overflow: hidden !important;
+    scrollbar-width: none !important; /* Firefox */
+}
+
+.xterm-viewport::-webkit-scrollbar {
+    display: none !important; /* Chrome, Safari, Edge */
+}
+
+/* 添加自定义滚动条样式（可选） */
+.admin-terminal .xterm-screen {
+    overflow: hidden;
+}
+
+/* 确保终端内容区域无滚动条 */
+.xterm-screen {
+    overflow: hidden !important;
+}
+
+/* 添加底部间距效果 */
+.admin-terminal-container::after {
+    content: '';
+    display: block;
+    height: 20px; /* 底部间距 */
+}
+
 /* 主内容区样式 */
 .main-content {
+    width: 60%;
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -130,21 +190,7 @@ body {
     text-overflow: ellipsis; /* 文本溢出显示省略号 */
 }
 
-/* 标签溢出指示器 */
-.tabs-overflow-indicator {
-    position: absolute;
-    right: 0;
-    top: 0;
-    height: 100%;
-    width: 30px;
-    background: linear-gradient(to right, transparent, #252526 70%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #999;
-    font-size: 20px;
-    pointer-events: none; /* 防止阻止点击标签 */
-}
+
 
 .tab-item.active {
     background-color: #1e1e1e;
