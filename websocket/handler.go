@@ -98,6 +98,9 @@ func (s *TerminalSession) handleInput() {
 			}
 			log.Println("WebSocket read:", hex.Dump(data))
 			if bytes.Equal(data, []byte("\x7f")) {
+				if buffSize == 0 {
+					continue
+				}
 				buff = buff[:buffSize-1]
 				buffSize -= 1
 				log.Println("buff read:", string(buff))
@@ -134,8 +137,9 @@ func (s *TerminalSession) handleOutput() {
 			}
 
 			//log.Println("WebSocket output:", hex.Dump(output))
-			output = bytes.Replace(output, []byte("\r\n"), []byte("\rPS> "), -1)
+			output = bytes.Replace(output, []byte("\r\n"), []byte("\r"), -1)
 			//log.Println("WebSocket output:", hex.Dump(output))
+			//output = append(output, []byte("PS> ")...)
 			if err := s.conn.WriteMessage(websocket.TextMessage, output); err != nil {
 				log.Println("WebSocket write error:", err)
 				return

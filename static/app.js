@@ -86,17 +86,20 @@ class TerminalManager {
 
         // 创建WebSocket连接
         const ws = new WebSocket(`ws://${window.location.host}/ws`);
-
-        const prompt = "\rPS> "
-        term.write(prompt);
+        term.prompt = () => {
+            const prompt = "\rPS> "
+            term.write(prompt);
+        }
+        term.prompt()
         term.onData(data => {
             // 特殊键处理
             if (data === '\r' || data === '\n') {
                 ws.send('\n');
                 term.write('\n')
-                term.write(prompt);
+                term.prompt()
             } else if (data === '\x7f') { // Backspace
                 ws.send('\x7f');
+                term.
                 term.write('\b \b')
             } else {
                 ws.send(data);
@@ -108,7 +111,9 @@ class TerminalManager {
             // 将Windows换行符统一转换为Unix换行符
 
             // 写入终端前重新加入回车符
+            term.write('\r');
             term.write(event.data);
+            term.prompt()
         };
 
         ws.onclose = () => {
