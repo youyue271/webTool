@@ -87,12 +87,17 @@ class TerminalManager {
         // 创建WebSocket连接
         const ws = new WebSocket(`ws://${window.location.host}/ws`);
 
+        const prompt = "\rPS> "
+        term.write(prompt);
         term.onData(data => {
             // 特殊键处理
             if (data === '\r' || data === '\n') {
                 ws.send('\n');
+                term.write('\n')
+                term.write(prompt);
             } else if (data === '\x7f') { // Backspace
-                ws.send('\b');
+                ws.send('\x7f');
+                term.write('\b \b')
             } else {
                 ws.send(data);
                 term.write(data);

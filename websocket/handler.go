@@ -1,6 +1,8 @@
 package websocket
 
 import (
+	"bytes"
+	"encoding/hex"
 	"log"
 	"net/http"
 	"sync"
@@ -32,7 +34,10 @@ func NewTerminalSession(w http.ResponseWriter, r *http.Request) (*TerminalSessio
 
 	term, err := terminal.NewSystemTerminal()
 	if err != nil {
-		conn.Close()
+		err := conn.Close()
+		if err != nil {
+			return nil, err
+		}
 		return nil, err
 	}
 
@@ -61,7 +66,10 @@ func (s *TerminalSession) close() {
 		return
 	default:
 		close(s.closed)
-		s.conn.Close()
+		err := s.conn.Close()
+		if err != nil {
+			return
+		}
 		s.terminal.Close()
 	}
 }
@@ -73,7 +81,9 @@ func (s *TerminalSession) Close() {
 func (s *TerminalSession) handleInput() {
 	defer s.wg.Done()
 	defer s.Close()
-
+	buff := make([]byte, 1024)
+	buff = nil
+	var buffSize = 0
 	for {
 		select {
 		case <-s.closed:
@@ -86,11 +96,26 @@ func (s *TerminalSession) handleInput() {
 				}
 				return
 			}
-			log.Println("WebSocket read:", string(data))
-			if _, err := s.terminal.Write(data); err != nil {
-				log.Println("Terminal write error:", err)
-				return
+			log.Println("WebSocket read:", hex.Dump(data))
+			if bytes.Equal(data, []byte("\x7f")) {
+				buff = buff[:buffSize-1]
+				buffSize -= 1
+				log.Println("buff read:", string(buff))
+			} else if bytes.Equal(data, []byte("\n")) {
+				buff = append(buff, data...)
+				log.Println("buff read:", hex.Dump(buff))
+				if _, err := s.terminal.Write(buff); err != nil {
+					log.Println("Terminal write error:", err)
+					return
+				}
+				buffSize = 0
+				buff = nil
+			} else {
+				buff = append(buff, data...)
+				buffSize += len(data)
+				log.Println("buff read:", string(buff))
 			}
+
 		}
 	}
 }
@@ -109,7 +134,7 @@ func (s *TerminalSession) handleOutput() {
 			}
 
 			//log.Println("WebSocket output:", hex.Dump(output))
-			//output = bytes.Replace(output, []byte("\r\n"), []byte("\r"), -1)
+			output = bytes.Replace(output, []byte("\r\n"), []byte("\rPS> "), -1)
 			//log.Println("WebSocket output:", hex.Dump(output))
 			if err := s.conn.WriteMessage(websocket.TextMessage, output); err != nil {
 				log.Println("WebSocket write error:", err)

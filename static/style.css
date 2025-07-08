@@ -17,7 +17,7 @@ body {
 
 /* 侧边栏样式 */
 .sidebar {
-    width: 500px;
+    width: 30%;
     background-color: #2d2d30;
     padding: 15px;
     border-right: 1px solid #3c3c3c;
