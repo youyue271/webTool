@@ -1,18 +1,19 @@
 tools:
-  NetworkScanner:
+  Nmap:
     name: "nmap"
+    exePath: ""
     command: "nmap -T4 -F -sV {{args}}"
     description: "快速网络扫描工具"
     defaultArgs: "192.168.1.0/24"
 
-  SecurityAudit:
-    name: "安全审计"
+  Fscan:
+    name: "fscan"
     command: "audit-tool -config security.yml {{args}}"
     description: "安全配置审计工具"
     defaultArgs: "-full"
 
-  SystemInfo:
-    name: "系统信息"
+  Dirsearch:
+    name: "Dirsearch"
     command: "systeminfo.exe {{args}}"
     description: "查看系统信息"
     defaultArgs: ""
