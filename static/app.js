@@ -24,7 +24,7 @@ class TerminalManager {
         this.scrollRightBtn = this.createScrollButton('right');
 
         // 右侧tab滚动显示组件事件
-        this.tabsWrapper.addEventListener('scroll', () => this.updateScrollIndicator());
+        // this.tabsWrapper.addEventListener('scroll', () => this.updateScrollIndicator());
         this.scrollLeftBtn.addEventListener('click', () => this.scrollTabs(-150));
         this.scrollRightBtn.addEventListener('click', () => this.scrollTabs(150));
         this.tabsWrapper.addEventListener('wheel', (e) => {
@@ -34,7 +34,7 @@ class TerminalManager {
 
                 // 将垂直滚动转换为水平滚动
                 this.tabsWrapper.scrollLeft += e.deltaY * 2;
-                this.updateScrollIndicator();
+                // this.updateScrollIndicator();
             }
         }, {passive: false});
 
@@ -64,30 +64,30 @@ class TerminalManager {
         return button;
     }
 
-    /**
-     * 检查Tab标签页是否溢出，配合滚动栏使用
-     */
-    checkTabOverflow() {
-        this.updateScrollIndicator();
-    }
-
-    /**
-     * 更新滚动指示器状态
-     */
-    updateScrollIndicator() {
-        const scrollLeft = this.tabsWrapper.scrollLeft;
-        const scrollWidth = this.tabsWrapper.scrollWidth;
-        const clientWidth = this.tabsWrapper.clientWidth;
-
-        // 更新滚动指示器位置
-        const scrollRatio = scrollLeft / (scrollWidth - clientWidth);
-        const gradientPercent = Math.max(0, Math.min(100, Math.round(scrollRatio * 100)));
-
-        // 动态调整指示器渐变方向
-        const gradientStart = Math.max(0, 100 - gradientPercent - 30);
-        this.scrollIndicator.style.background =
-            `linear-gradient(to right, transparent ${gradientStart}%, #252526 ${gradientStart + 30}%)`;
-    }
+    // /**
+    //  * 检查Tab标签页是否溢出，配合滚动栏使用
+    //  */
+    // checkTabOverflow() {
+    //     this.updateScrollIndicator();
+    // }
+    //
+    // /**
+    //  * 更新滚动指示器状态
+    //  */
+    // updateScrollIndicator() {
+    //     const scrollLeft = this.tabsWrapper.scrollLeft;
+    //     const scrollWidth = this.tabsWrapper.scrollWidth;
+    //     const clientWidth = this.tabsWrapper.clientWidth;
+    //
+    //     // 更新滚动指示器位置
+    //     const scrollRatio = scrollLeft / (scrollWidth - clientWidth);
+    //     const gradientPercent = Math.max(0, Math.min(100, Math.round(scrollRatio * 100)));
+    //
+    //     // 动态调整指示器渐变方向
+    //     const gradientStart = Math.max(0, 100 - gradientPercent - 30);
+    //     this.scrollIndicator.style.background =
+    //         `linear-gradient(to right, transparent ${gradientStart}%, #252526 ${gradientStart + 30}%)`;
+    // }
 
 
     /**
@@ -100,7 +100,7 @@ class TerminalManager {
 
         // 限制在有效范围内
         this.tabsWrapper.scrollLeft = Math.max(0, Math.min(maxScroll, newPosition));
-        this.updateScrollIndicator();
+        // this.updateScrollIndicator();
     }
 
     /**
@@ -122,7 +122,7 @@ class TerminalManager {
             this.tabsWrapper.scrollLeft += tabRect.right - wrapperRect.right;
         }
 
-        this.updateScrollIndicator();
+        // this.updateScrollIndicator();
     }
 
     // 执行终端相关
@@ -155,7 +155,7 @@ class TerminalManager {
         tab.appendChild(closeBtn);
 
         this.tabsContainer.appendChild(tab);
-        setTimeout(() => this.checkTabOverflow(), 100);
+        // setTimeout(() => this.checkTabOverflow(), 100);
 
         // 创建终端容器
         const termContainer = document.createElement('div');
@@ -170,7 +170,8 @@ class TerminalManager {
                 background: '#1e1e1e',
                 foreground: '#d4d4d4'
             },
-            windowsMode: true
+            // windowsMode: true,
+            convertEol: true,
         });
 
         const fitAddon = new FitAddon.FitAddon();
@@ -275,7 +276,7 @@ class TerminalManager {
         terminal.container.remove();
         terminal.listItem.remove();
 
-        setTimeout(() => this.checkTabOverflow(), 100);
+        // setTimeout(() => this.checkTabOverflow(), 100);
 
         if (terminal.id === this.activeTerminalId && this.terminals.length > 0) {
             this.switchTerminal(this.terminals[0].id);
@@ -318,7 +319,8 @@ class TerminalManager {
             },
             // rows: 8,
             // cols: 40,
-            windowsMode: true
+            // windowsMode: true,
+            convertEol: true,
         });
 
 
@@ -343,16 +345,16 @@ class TerminalManager {
             }
         })
 
-        adminWs.onmessage = event => {
-            // 显示控制台输出
-            adminTerm.write(event.data);
-        }
+        // adminWs.onmessage = event => {
+        //     // 显示控制台输出
+        //     adminTerm.write(event.data);
+        // }
 
         adminWs.onmessage = event => {
             // 后端创建工具逻辑 TODO：需要定制一下， 这个就是粗略的模式
             const message = event.data;
             if (message.startsWith('CREATE_TOOL:')) {
-                const toolInfo = message.split(':')[1];
+                const toolInfo = message.split('::',2)[1];
                 const [toolName, command] = toolInfo.split('|');
                 this.createToolTerminal(toolName, command);
             } else {
@@ -360,7 +362,6 @@ class TerminalManager {
             }
         };
 
-        adminTerm.write("terminal ready")
         this.adminTerm = {
             adminTerm,
             adminWs,
@@ -409,7 +410,7 @@ class TerminalManager {
         tab.appendChild(closeBtn);
 
         this.tabsContainer.appendChild(tab);
-        setTimeout(() => this.checkTabOverflow(), 100);
+        // setTimeout(() => this.checkTabOverflow(), 100);
 
         // 创建终端容器
         const termContainer = document.createElement('div');
@@ -424,7 +425,8 @@ class TerminalManager {
                 background: '#1e1e1e',
                 foreground: '#d4d4d4'
             },
-            windowsMode: true
+            // windowsMode: true,
+            convertEol: true,
         });
 
         const fitAddon = new FitAddon.FitAddon();
@@ -432,12 +434,17 @@ class TerminalManager {
         term.open(termContainer);
         fitAddon.fit();
 
+        const listItem = document.createElement('li');
+        listItem.textContent = toolName;
+        listItem.dataset.id = id;
+        listItem.addEventListener('click', () => this.switchTerminal(id));
+        this.terminalList.appendChild(listItem);
+
         const ws = new WebSocket(`ws://${window.location.host}/ws-tool?terminalId=${id}&command=${encodeURIComponent(command)}`);
 
         term.onData(data => {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.send(data);
-            }
+            ws.send(data);
+            term.write(data)
         });
 
         ws.onmessage = event => {
@@ -455,6 +462,7 @@ class TerminalManager {
             ws,
             tab,
             container: termContainer,
+            listItem,
             fitAddon,
             toolName
         });

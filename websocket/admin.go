@@ -1,10 +1,12 @@
 package websocket
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +16,7 @@ import (
 
 type ToolConfig struct {
 	Name        string `yaml:"name"`
+	ExePath     string `yaml:"exePath"`
 	Command     string `yaml:"command"`
 	Description string `yaml:"description"`
 	DefaultArgs string `yaml:"defaultArgs"`
@@ -60,47 +63,58 @@ func AdminWebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	conn.WriteMessage(websocket.TextMessage, []byte("可用工具: \n\r"))
 
 	for toolKey, tool := range Config.Tools {
-		msg := fmt.Sprintf("- %s: %s (使用: %s %s)\r\n", tool.Name, tool.Description, toolKey, tool.DefaultArgs)
-		conn.WriteMessage(websocket.TextMessage, []byte(msg))
+		_, err := os.Lstat(tool.ExePath)
+		if !os.IsNotExist(err) {
+			msg := fmt.Sprintf("- %s\r\n", toolKey)
+			conn.WriteMessage(websocket.TextMessage, []byte(msg))
+		}
 	}
 
 	conn.WriteMessage(websocket.TextMessage, []byte("\r\n> "))
-
+	inputStr := make([]byte, 1024)
+	inputStr = nil
 	for {
 		_, input, err := conn.ReadMessage()
+		//log.Printf("接收输入: %v\n", hex.Dump(input[len(input)-1:]))
 		if err != nil {
 			break
 		}
-
-		inputStr := strings.TrimSpace(string(input))
-		parts := strings.SplitN(inputStr, " ", 2)
-		toolKey := parts[0]
-		args := ""
-		if len(parts) > 1 {
-			args = parts[1]
+		if bytes.Equal(input, []byte("\x7f")) {
+			if len(inputStr) == 0 {
+				continue
+			}
+			inputStr = inputStr[:len(inputStr)-1]
+			//log.Println("buff read:", string(inputStr))
+		} else if bytes.Equal(input[len(input)-1:], []byte("\n")) || bytes.Equal(input[len(input)-1:], []byte("\r")) {
+			parts := strings.SplitN(string(inputStr), " ", 2)
+			//log.Println(hex.Dump(inputStr))
+			inputStr = nil
+			toolKey := parts[0]
+			args := ""
+			if len(parts) > 1 {
+				args = parts[1]
+			}
+			tool, exists := Config.Tools[toolKey]
+			if !exists {
+				conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("未知工具")))
+				continue
+			}
+			if args == "" && tool.DefaultArgs != "" {
+				args = tool.DefaultArgs
+			}
+			fullCommand := strings.Replace(tool.Command, "{{args}}", args, -1)
+			fullCommand = strings.Replace(fullCommand, "{{exePath}}", tool.ExePath, -1)
+			terminalId := fmt.Sprintf("tool-%d", time.Now().UnixNano())
+			for client := range adminClients {
+				creatCmd := fmt.Sprintf("CREATE_TOOL::%s|%s", tool.Name, fullCommand)
+				//log.Println(creatCmd)
+				client.WriteMessage(websocket.TextMessage, []byte(creatCmd))
+			}
+			conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf(
+				"已创建工具终端: %s (%s)\r\n> ", tool.Name, terminalId)))
+		} else {
+			inputStr = append(inputStr, input...)
 		}
-
-		tool, exists := Config.Tools[toolKey]
-		if !exists {
-			conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("未知工具")))
-			continue
-		}
-
-		if args == "" && tool.DefaultArgs != "" {
-			args = tool.DefaultArgs
-		}
-
-		fullCommand := strings.Replace(tool.Command, "{{args}}", args, -1)
-
-		terminalId := fmt.Sprintf("tool-%d", time.Now().UnixNano())
-
-		for client := range adminClients {
-			creatCmd := fmt.Sprintf("CREATE_TOOL:%s|%s", tool.Name, fullCommand)
-			client.WriteMessage(websocket.TextMessage, []byte(creatCmd))
-		}
-
-		conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf(
-			"已创建工具终端: %s (%s)\r\n> ", tool.Name, terminalId)))
 	}
 
 }
@@ -120,6 +134,7 @@ func ToolWebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	terminalId := r.URL.Query().Get("terminalId")
 	command := r.URL.Query().Get("command")
 
+	//log.Println("terminalId:", terminalId, "command:", command)
 	if terminalId == "" || command == "" {
 		conn.Close()
 		return
@@ -168,23 +183,15 @@ func runToolCommand(conn *websocket.Conn, command string) {
 		closed:   make(chan struct{}),
 	}
 
-	session.wg.Add(3)
-	go session.handleInput()
+	session.wg.Add(2)
 	go session.handleOutput()
 	go session.execCommand(cmdName, cmdArgs)
+	go session.handleInput()
+	//
 
 	// 关闭监控
 	go func() {
 		session.wg.Wait()
 		session.close()
 	}()
-}
-func (s *TerminalSession) execCommand(cmdName string, cmdArgs []string) {
-	s.wg.Done()
-	cmd := cmdName + " " + strings.Join(cmdArgs, " ")
-	_, err := s.terminal.Write([]byte(cmd))
-	if err != nil {
-		log.Println("Terminal write error:", err)
-		return
-	}
 }

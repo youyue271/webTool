@@ -22,6 +22,7 @@ func main() {
 
 	http.HandleFunc("/ws", websocket.Handler)
 	http.Handle("/", http.FileServer(http.Dir("./static")))
+	http.Handle("/node_modules", http.FileServer(http.Dir("./node_modules")))
 
 	http.HandleFunc("/ws-admin", websocket.AdminWebSocketHandler)
 	http.HandleFunc("/ws-tool", websocket.ToolWebSocketHandler)

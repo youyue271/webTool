@@ -67,8 +67,9 @@ func NewTerminal(shell string) (*Terminal, error) {
 	//	fmt.Errorf("change encoding failed: %w", err)
 	//	return nil, err
 	//}
-	t.wg.Add(1)
-	go t.handleOutput()
+	t.wg.Add(2)
+	go t.handleStdoutOutput()
+	go t.handleStderrOutput()
 
 	return t, nil
 }
@@ -103,12 +104,41 @@ func (t *Terminal) Close() {
 	})
 }
 
-func (t *Terminal) handleOutput() {
+func (t *Terminal) handleStdoutOutput() {
 	defer t.wg.Done()
 
 	// 使用io.MultiReader保证顺序一致性
-	reader := io.MultiReader(t.stdout, t.stderr)
+	//reader := io.MultiReader(t.stdout, t.stderr)
+	reader := io.Reader(t.stdout)
+	for {
+		select {
+		case <-t.closeChan:
+			return
+		default:
+			buf := make([]byte, 4096)
 
+			translatedReader := transform.NewReader(reader, t.encoding.NewDecoder())
+			n, err := translatedReader.Read(buf)
+
+			if n > 0 {
+				t.outputChan <- buf[:n]
+			}
+			if err != nil {
+				if err != io.EOF {
+					t.outputChan <- []byte("\r\n\x1b[31mTerminal error: " + err.Error() + "\x1b[0m")
+				}
+				return
+			}
+		}
+	}
+}
+
+func (t *Terminal) handleStderrOutput() {
+	defer t.wg.Done()
+
+	// 使用io.MultiReader保证顺序一致性
+	//reader := io.MultiReader(t.stdout, t.stderr)
+	reader := io.Reader(t.stderr)
 	for {
 		select {
 		case <-t.closeChan:
