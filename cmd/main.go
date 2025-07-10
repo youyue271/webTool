@@ -6,30 +6,23 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+
+	"webtool/router"
 	"webtool/websocket"
 )
 
 func main() {
 	loadConfig("config.yaml")
 
+	router.InitRouter()
+
 	port := flag.String("p", "8080", "port number")
 	flag.Parse()
-
-	// 添加健康检查端点
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-
-	http.Handle("/", http.FileServer(http.Dir("./static")))
-	http.Handle("/node_modules", http.FileServer(http.Dir("./node_modules")))
-
-	http.HandleFunc("/ws", websocket.Handler)
-	http.HandleFunc("/ws-admin", websocket.AdminWebSocketHandler)
-	http.HandleFunc("/ws-tool", websocket.ToolWebSocketHandler)
-
 	// 启动服务器
 	log.Printf("Server running on http://localhost:%s\n", *port)
 	log.Fatal(http.ListenAndServe(":"+*port, nil))
+	// 添加健康检查端点
+
 }
 
 func loadConfig(filename string) {
