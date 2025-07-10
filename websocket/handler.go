@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"log"
 	"net/http"
-	"strings"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -88,6 +87,7 @@ func (s *TerminalSession) handleInput() {
 	for {
 		select {
 		case <-s.closed:
+			//println(9)
 			return
 		default:
 			_, data, err := s.conn.ReadMessage()
@@ -131,6 +131,7 @@ func (s *TerminalSession) handleOutput() {
 	for {
 		select {
 		case <-s.closed:
+			//println(8)
 			return
 		case output, ok := <-s.terminal.Read():
 			if !ok {
@@ -141,10 +142,10 @@ func (s *TerminalSession) handleOutput() {
 
 			//output = bytes.Replace(output, []byte(" \r\n"), []byte(" \r"), -1)
 			//output = bytes.Replace(output, []byte("\r\n"), []byte("\r"), -1)
-			log.Println("WebSocket output:", hex.Dump(output))
+			log.Println("WebSocket change:", hex.Dump(output))
 			//output = append(output, []byte("PS> ")...)
 			if bytes.Equal(output, []byte("\r\n")) {
-				s.conn.WriteMessage(websocket.TextMessage, []byte("\r"))
+				s.conn.WriteMessage(websocket.TextMessage, []byte("\r     \r"))
 				continue
 			}
 			if err := s.conn.WriteMessage(websocket.TextMessage, output); err != nil {
@@ -155,10 +156,9 @@ func (s *TerminalSession) handleOutput() {
 	}
 }
 
-func (s *TerminalSession) execCommand(cmdName string, cmdArgs []string) {
-	//s.wg.Done()
-	cmd := cmdName + " " + strings.Join(cmdArgs, " ")
-	cmd = strings.Trim(cmd, " ") + "\n"
+func (s *TerminalSession) execCommand(cmd string) {
+	//cmd := cmdName + " " + strings.Join(cmdArgs, " ")
+	//cmd = strings.Trim(cmd, " ") + "\n"
 	log.Printf("cmd: %v\n", hex.Dump([]byte(cmd)))
 	_, err := s.terminal.Write([]byte(cmd))
 	if err != nil {

@@ -312,15 +312,15 @@ class TerminalManager {
         const container = document.getElementById('admin-terminal');
 
         const adminTerm = new Terminal({
+            convertEol: true,
             cursorBlink: true,
+            // rows: 8,
+            // cols: 40,
+            // windowsMode: true,
             theme: {
                 background: '#1e1e1e',
                 foreground: '#d4d4d4'
             },
-            // rows: 8,
-            // cols: 40,
-            // windowsMode: true,
-            convertEol: true,
         });
 
 
@@ -330,7 +330,6 @@ class TerminalManager {
         fitAddon.fit();
 
         const adminWs = new WebSocket(`ws://${window.location.host}/ws-admin`);
-        adminTerm.write("hello world!")
         adminTerm.onData(data => {
             // 输出发送后端
             if (data === '\r' || data === '\n') {
@@ -355,8 +354,8 @@ class TerminalManager {
             const message = event.data;
             if (message.startsWith('CREATE_TOOL:')) {
                 const toolInfo = message.split('::',2)[1];
-                const [toolName, command] = toolInfo.split('|');
-                this.createToolTerminal(toolName, command);
+                const [toolPath, toolName, command] = toolInfo.split('|');
+                this.createToolTerminal(toolPath, toolName, command);
             } else {
                 adminTerm.write(message);
             }
@@ -384,10 +383,11 @@ class TerminalManager {
 
     /**
      * 通过控制台创建执行终端tab
+     * @param toolPath 工具路径, 后端会先CD过去
      * @param toolName 工具名称, 命名为Tab名
      * @param command 指令(工具地址,通过后端获得)
      */
-    createToolTerminal(toolName, command) {
+    createToolTerminal(toolPath, toolName, command) {
         const id = `tool-term-${Date.now()}`;
 
         // 创建标签页
@@ -440,15 +440,34 @@ class TerminalManager {
         listItem.addEventListener('click', () => this.switchTerminal(id));
         this.terminalList.appendChild(listItem);
 
-        const ws = new WebSocket(`ws://${window.location.host}/ws-tool?terminalId=${id}&command=${encodeURIComponent(command)}`);
+        const ws = new WebSocket(`ws://${window.location.host}/ws-tool?exePath=${toolPath}&terminalId=${id}&command=${encodeURIComponent(command)}`);
+        term.prompt = () => {
+            const prompt = "\rPS> "
+            term.write(prompt);
+        }
+        term.prompt()
+        term.write(command);
+        term.write('\n');
+
 
         term.onData(data => {
-            ws.send(data);
-            term.write(data)
+            if (data === '\r' || data === '\n') {
+                ws.send('\n');
+                term.write('\n')
+                term.prompt()
+            } else if (data === '\x7f') { // Backspace
+                ws.send('\x7f');
+                term.write('\b \b')
+            } else {
+                ws.send(data);
+                term.write(data);
+            }
         });
 
         ws.onmessage = event => {
+            term.write("\r   \r");
             term.write(event.data);
+            term.prompt()
         };
 
         ws.onclose = () => {

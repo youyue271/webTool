@@ -102,16 +102,24 @@ func AdminWebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			if args == "" && tool.DefaultArgs != "" {
 				args = tool.DefaultArgs
 			}
+			name := tool.Name
 			fullCommand := strings.Replace(tool.Command, "{{args}}", args, -1)
+			fullCommand = strings.Replace(tool.Command, "{{name}}", name, -1)
 			fullCommand = strings.Replace(fullCommand, "{{exePath}}", tool.ExePath, -1)
 			terminalId := fmt.Sprintf("tool-%d", time.Now().UnixNano())
 			for client := range adminClients {
-				creatCmd := fmt.Sprintf("CREATE_TOOL::%s|%s", tool.Name, fullCommand)
+				creatCmd := fmt.Sprintf("CREATE_TOOL::%s|%s|%s", tool.ExePath, toolKey, fullCommand)
 				//log.Println(creatCmd)
-				client.WriteMessage(websocket.TextMessage, []byte(creatCmd))
+				err := client.WriteMessage(websocket.TextMessage, []byte(creatCmd))
+				if err != nil {
+					return
+				}
 			}
-			conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf(
-				"已创建工具终端: %s (%s)\r\n> ", tool.Name, terminalId)))
+			err := conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf(
+				"已创建工具终端: %s (%s)\r\n> ", toolKey, terminalId)))
+			if err != nil {
+				return
+			}
 		} else {
 			inputStr = append(inputStr, input...)
 		}
@@ -130,10 +138,12 @@ func ToolWebSocketHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("工具WebSocket升级失败:", err)
 		return
 	}
-
+	//println(1)
 	terminalId := r.URL.Query().Get("terminalId")
 	command := r.URL.Query().Get("command")
+	exePath := r.URL.Query().Get("exePath")
 
+	print(terminalId, command)
 	//log.Println("terminalId:", terminalId, "command:", command)
 	if terminalId == "" || command == "" {
 		conn.Close()
@@ -144,34 +154,22 @@ func ToolWebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	toolClients[terminalId] = conn
 	clientsMutex.Unlock()
 
+	//var wg sync.WaitGroup
+	//println(2)
+	runToolCommand(conn, command, exePath)
 	defer func() {
+		//println(4)
 		clientsMutex.Lock()
 		delete(toolClients, terminalId)
 		clientsMutex.Unlock()
 		conn.Close()
 	}()
-
-	go runToolCommand(conn, command)
-
-	// 可以用于处理可鞥的输入输出 TODO: 处理各个文件的输出内容
-	for {
-		_, _, err := conn.ReadMessage()
-		if err != nil {
-			break
-		}
-	}
+	//println(3)
+	log.Printf("Tool Terminal session %v closed", terminalId)
 }
 
-func runToolCommand(conn *websocket.Conn, command string) {
-	parts := strings.Fields(command)
-	if len(parts) == 0 {
-		conn.WriteMessage(websocket.TextMessage, []byte("错误: 空指令\r\n"))
-		return
-	}
-
-	cmdName := parts[0]
-	cmdArgs := parts[1:]
-
+func runToolCommand(conn *websocket.Conn, command string, exePath string) {
+	//defer wg.Done()
 	term, err := terminal.NewSystemTerminal()
 	if err != nil {
 		return
@@ -183,15 +181,22 @@ func runToolCommand(conn *websocket.Conn, command string) {
 		closed:   make(chan struct{}),
 	}
 
+	//println(5)
 	session.wg.Add(2)
 	go session.handleOutput()
-	go session.execCommand(cmdName, cmdArgs)
+	cdCommand := "cd \"" + exePath + "\"\n"
+	session.execCommand(cdCommand)
+	command = command + "\n"
+	session.execCommand(command)
 	go session.handleInput()
 	//
 
 	// 关闭监控
-	go func() {
+	defer func() {
+		//println(6)
 		session.wg.Wait()
+		//println(7)
+		session.terminal.Close()
 		session.close()
 	}()
 }

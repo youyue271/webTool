@@ -1,21 +1,21 @@
 tools:
   Nmap:
-    name: "nmap"
-    exePath: ""
-    command: "nmap -T4 -F -sV {{args}}"
-    description: "快速网络扫描工具"
-    defaultArgs: "192.168.1.0/24"
+    name: "nmap.exe"
+    exePath: "C:\\your\\nmap\\dir\\"
+    command: "./{{name}} {{target}}"
+    description: "扫描工具"
+    defaultArgs: ""
 
   Fscan:
-    name: "fscan"
-    exePath: ""
-    command: "audit-tool -config security.yml {{args}}"
+    name: "fscan.exe"
+    exePath: "C:\\your\\fscan\\dir\\"
+    command: "./{{name}} -h {{target}}"
     description: "内网扫描工具"
-    defaultArgs: "-full"
+    defaultArgs: ""
 
-  Dirsearch:
-    name: "Dirsearch"
-    exePath: ""
-    command: "systeminfo.exe {{args}}"
+  dirsearch:
+    name: "dirsearch.py"
+    exePath: "C:\\your\\dirsearch\\dir\\"
+    command: "python3.9 {{name}} -u {{target}}"
     description: "目录扫描工具"
     defaultArgs: ""
