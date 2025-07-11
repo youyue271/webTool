@@ -1,4 +1,4 @@
-package websocket
+package controller
 
 import (
 	"bytes"
@@ -10,8 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"webtool/terminal"
+	"webtool/internal/service"
+	"webtool/internal/terminal"
 )
 
 type ToolConfig struct {
@@ -33,7 +33,7 @@ var (
 	Config       AppConfig
 )
 
-func AdminWebSocketHandler(w http.ResponseWriter, r *http.Request) {
+func AdminTerminalHandler(w http.ResponseWriter, r *http.Request) {
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -126,7 +126,8 @@ func AdminWebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
-func ToolWebSocketHandler(w http.ResponseWriter, r *http.Request) {
+
+func ToolTerminalHandler(w http.ResponseWriter, r *http.Request) {
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -175,28 +176,52 @@ func runToolCommand(conn *websocket.Conn, command string, exePath string) {
 		return
 	}
 
-	session := &TerminalSession{
-		conn:     conn,
-		terminal: term,
-		closed:   make(chan struct{}),
+	session := service.CreateTerminalSession(conn, term)
+
+	cdCommand := "cd \"" + exePath + "\"\n"
+	session.ExecCommand(cdCommand)
+	command = command + "\n"
+	session.ExecCommand(command)
+
+	session.Listen()
+}
+
+func NewTerminalSession(w http.ResponseWriter, r *http.Request) (*service.TerminalSession, error) {
+	var upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
 	}
 
-	//println(5)
-	session.wg.Add(2)
-	go session.handleOutput()
-	cdCommand := "cd \"" + exePath + "\"\n"
-	session.execCommand(cdCommand)
-	command = command + "\n"
-	session.execCommand(command)
-	go session.handleInput()
-	//
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return nil, err
+	}
 
-	// 关闭监控
-	defer func() {
-		//println(6)
-		session.wg.Wait()
-		//println(7)
-		session.terminal.Close()
-		session.close()
-	}()
+	term, err := terminal.NewSystemTerminal()
+	if err != nil {
+		err := conn.Close()
+		if err != nil {
+			return nil, err
+		}
+		return nil, err
+	}
+
+	session := service.CreateTerminalSession(conn, term)
+
+	session.Listen()
+	return session, nil
+}
+
+func ExecTerminalHandler(w http.ResponseWriter, r *http.Request) {
+	session, err := NewTerminalSession(w, r)
+	if err != nil {
+		log.Println("Failed to create terminal session:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer session.Close()
+	log.Println("Terminal session closed")
 }

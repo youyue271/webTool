@@ -180,7 +180,7 @@ class TerminalManager {
         fitAddon.fit();
 
         // 创建WebSocket连接
-        const ws = new WebSocket(`ws://${window.location.host}/ws`);
+        const ws = new WebSocket(`ws://${window.location.host}/ws-exec-terminal`);
         term.prompt = () => {
             const prompt = "\rPS> "
             term.write(prompt);
@@ -329,7 +329,7 @@ class TerminalManager {
         adminTerm.open(container);
         fitAddon.fit();
 
-        const adminWs = new WebSocket(`ws://${window.location.host}/ws-admin`);
+        const adminWs = new WebSocket(`ws://${window.location.host}/ws-admin-terminal`);
         adminTerm.onData(data => {
             // 输出发送后端
             if (data === '\r' || data === '\n') {
@@ -440,7 +440,7 @@ class TerminalManager {
         listItem.addEventListener('click', () => this.switchTerminal(id));
         this.terminalList.appendChild(listItem);
 
-        const ws = new WebSocket(`ws://${window.location.host}/ws-tool?exePath=${toolPath}&terminalId=${id}&command=${encodeURIComponent(command)}`);
+        const ws = new WebSocket(`ws://${window.location.host}/ws-tool-terminal?exePath=${toolPath}&terminalId=${id}&command=${encodeURIComponent(command)}`);
         term.prompt = () => {
             const prompt = "\rPS> "
             term.write(prompt);

@@ -6,13 +6,12 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-
-	"webtool/router"
-	"webtool/websocket"
+	"webtool/internal/controller"
+	"webtool/internal/router"
 )
 
 func main() {
-	loadConfig("config.yaml")
+	loadConfig("internal/config/config.yaml")
 
 	router.InitRouter()
 
@@ -30,7 +29,7 @@ func loadConfig(filename string) {
 	if err != nil {
 		log.Fatalf("配置文件读取失败: %v", err)
 	}
-	if err := yaml.Unmarshal(data, &websocket.Config); err != nil {
+	if err := yaml.Unmarshal(data, &controller.Config); err != nil {
 		log.Fatalf("配置文件解析失败: %v", err)
 	}
 

@@ -1,23 +1,13 @@
-package websocket
+package service
 
 import (
 	"bytes"
 	"encoding/hex"
-	"log"
-	"net/http"
-	"sync"
-
 	"github.com/gorilla/websocket"
-	"webtool/terminal"
+	"log"
+	"sync"
+	"webtool/internal/terminal"
 )
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
 
 type TerminalSession struct {
 	conn     *websocket.Conn
@@ -26,38 +16,12 @@ type TerminalSession struct {
 	closed   chan struct{}
 }
 
-func NewTerminalSession(w http.ResponseWriter, r *http.Request) (*TerminalSession, error) {
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	term, err := terminal.NewSystemTerminal()
-	if err != nil {
-		err := conn.Close()
-		if err != nil {
-			return nil, err
-		}
-		return nil, err
-	}
-
-	session := &TerminalSession{
+func CreateTerminalSession(conn *websocket.Conn, terminal *terminal.Terminal) *TerminalSession {
+	return &TerminalSession{
 		conn:     conn,
-		terminal: term,
+		terminal: terminal,
 		closed:   make(chan struct{}),
 	}
-
-	session.wg.Add(2)
-	go session.handleInput()
-	go session.handleOutput()
-
-	// 关闭监控
-	go func() {
-		session.wg.Wait()
-		session.close()
-	}()
-
-	return session, nil
 }
 
 func (s *TerminalSession) close() {
@@ -76,6 +40,19 @@ func (s *TerminalSession) close() {
 
 func (s *TerminalSession) Close() {
 	s.close()
+}
+
+func (s *TerminalSession) Listen() {
+	s.wg.Add(2)
+	go s.handleInput()
+	go s.handleOutput()
+
+	// 关闭监控
+	defer func() {
+		s.wg.Wait()
+		s.close()
+	}()
+
 }
 
 func (s *TerminalSession) handleInput() {
@@ -145,7 +122,7 @@ func (s *TerminalSession) handleOutput() {
 			log.Println("WebSocket change:", hex.Dump(output))
 			//output = append(output, []byte("PS> ")...)
 			if bytes.Equal(output, []byte("\r\n")) {
-				s.conn.WriteMessage(websocket.TextMessage, []byte("\r     \r"))
+				_ = s.conn.WriteMessage(websocket.TextMessage, []byte("\r     \r"))
 				continue
 			}
 			if err := s.conn.WriteMessage(websocket.TextMessage, output); err != nil {
@@ -156,7 +133,7 @@ func (s *TerminalSession) handleOutput() {
 	}
 }
 
-func (s *TerminalSession) execCommand(cmd string) {
+func (s *TerminalSession) ExecCommand(cmd string) {
 	//cmd := cmdName + " " + strings.Join(cmdArgs, " ")
 	//cmd = strings.Trim(cmd, " ") + "\n"
 	log.Printf("cmd: %v\n", hex.Dump([]byte(cmd)))
@@ -165,17 +142,4 @@ func (s *TerminalSession) execCommand(cmd string) {
 		log.Println("Terminal write error:", err)
 		return
 	}
-}
-
-func Handler(w http.ResponseWriter, r *http.Request) {
-	session, err := NewTerminalSession(w, r)
-	if err != nil {
-		log.Println("Failed to create terminal session:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer session.Close()
-
-	<-session.closed
-	log.Println("Terminal session closed")
 }
